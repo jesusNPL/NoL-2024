@@ -575,17 +575,12 @@ The function to import data to R is simple **read.table()** or **read.csv()**, a
 #| eval: false
 #| echo: true
 
-dat <- read.table("data/Sample.txt")
+library(tidyverse)
 
-dat2 <- read.table("data/Sample.txt", row.names = 1, header = TRUE)
+dat <- read_table("data/live.oaks.txt")
 
-dat3 <- read.csv("data/Sample.csv")
+glimpse(dat)
 
-class(dat)
-
-class(dat2)
-
-class(dat3)
 
 ```
 
@@ -596,7 +591,7 @@ You can also import your data using the same functions, but without specifying t
 ```{r}
 #| echo: true
 #| eval: false
-dat5 <- na.omit(read.csv(file.choose()))
+dat <- na.omit(read.csv(file.choose()))
 ```
 
 ------------------------------------------------------------------------
@@ -609,10 +604,8 @@ You can also save your data from R using the function **write.table()** or **wri
 #| eval: false
 #| echo: true
 
-is.na(dat3Sample)
-
-write.csv(dat3Sample, 
-          file = "data/dat3Sample.csv")
+write_csv(dat, 
+          file = "data/live.oaks.csv")
 
 ```
 
@@ -740,17 +733,54 @@ To finish very simple tutorial, we will tell R to welcome all of the members of 
 #| echo: true
 
 # Create a vector with students names
-nol_2023 <- c("st1", "st2", "st3", "st4", "st5")
+oak_names <- unique(dat$Species)
 
-for (i in 1:length(nol_2023)){ 
+for (i in 1:length(oak_names)){ 
   
-  print(paste0("Hi ", nol_2023[i], ", welcome to the Intro to R 2023!"))
+  print(paste0("Species ", 
+               oak_names[i], # vector with species names
+               ", was used in the Intro to R 2024!")
+        )
   
   Sys.sleep(3) # wait three seconds before the next iteration or name
   
 }
 
 ```
+
+------------------------------------------------------------------------
+
+## Visualization
+
+```{r}
+#| code-fold: true
+#| eval: false
+#| echo: true
+
+library(tidyverse)
+library(sf)
+library(rnaturalearth)
+
+## Read data
+oaks <- read_csv("data/live.oaks.csv")
+
+## Plot number of observations
+oaks %>% 
+  count(Species) %>% 
+  ggplot(aes(x = Species, y = n)) + 
+  geom_bar(stat = "identity") + 
+  coord_flip() + 
+  ylab("Number of observations") + 
+  theme_bw()
+
+```
+
+::: callout-tip
+# The function install.packages()
+If you don't have an specific R package installed you just need to run the function install.packages("package name")
+
+For example, install.packages("tidyverse")
+:::
 
 ------------------------------------------------------------------------
 
