@@ -1,6 +1,6 @@
 ---
-title: "Large scale biodiversity patterns"
-description: Showing some neat features of R!
+title: "NoL -- Intro to R"
+description: Mapping biodiversity and visualization!
 date: today # other options: now, last-modified
 authors:
   - name: Dr. Jesús N. Pinto-Ledezma 
@@ -35,30 +35,10 @@ You will need three datasets, that will be provided for you:
 
 Set up a working directory and put the data files in that directory. Tell R that this is the directory you will be using, and read in your data:
 
-**Option 1**
-
-You can download the data directly on your computer by clicking [**Occurrences**](https://www.dropbox.com/sh/15unznp4wdkdccl/AAB3XEZbHHpTD2SwiBntT1ija?dl=0),  [**Geographical Ranges**](https://www.dropbox.com/sh/lw5xhtj35b9k1em/AABAHZDFZTX6kYWiCaSrk-h3a?dl=0), and [**Environmental predictors**](https://www.dropbox.com/sh/n1h94pp4o99uyun/AADc2aIzBIoZSa7KPKK4kOXEa?dl=0) and store them in the folder named **Data"**.
-
-**Option 2**
-
-You can also go ahead and run the next lines if you don't want to copy a paste the links provided above.
-
 ```{r}
 #| eval: false
-main.dir <- getwd() # Will get the working directory
 
-# Print main directory
-
-main.dir
-
-# create a Data folder
-dir.create("Data")
-
-urls <- "https://www.dropbox.com/s/36m77nus3taywjp/Archive.zip?dl=1" # Name of the file to download
-
-download.file(url = urls, file.path(main.dir, "Data/Archive.zip"), mode = "wb") # download the file in a specific folder
-
-unzip("Data/Archive.zip", exdir = "Data/")
+setwd("your path name")
 
 ```
 
@@ -68,9 +48,8 @@ To do this laboratory you will need to have a set of R packages. Install the fol
 #| eval: false
 
 packages <- c("tidyverse", "sf", "scico", "rnaturalearth", 
-              "rnaturalearthdata", "smoothr", "sp", "viridis", 
-              "terra", "spdep", "ncf", 
-              "spatialreg", "rasterVis", "RColorBrewer") 
+              "rnaturalearthdata", "viridis", 
+              "terra", "rasterVis", "RColorBrewer") 
 # Package vector names
 
 ```
@@ -108,10 +87,9 @@ Load installed packages:
 ```{r}
 #| eval: true
 
+library(tidyverse)
 library(scico)
 library(rnaturalearth)
-library(smoothr)
-library(tidyverse)
 library(terra)
 library(sf)
 
@@ -205,7 +183,7 @@ Load species occurrences data points. We will use occurrences from Live oaks, th
 ```{r}
 #| eval: true
 
-oaks_occ <- read_delim("Data/OCC/live.oaks.txt") %>% 
+oaks_occ <- read_delim("data/live.oaks.csv") %>% 
   filter(Species != "Hybrid") # removing hybrid observations
 
 oaks_occ %>% 
@@ -215,9 +193,11 @@ oaks_occ %>%
 
 oaks_occ %>% 
   count(Species) %>% 
-  ggplot(aes(x = n)) + 
-  geom_histogram() + 
-  xlab("Number of observations")
+  ggplot(aes(x = Species, y = n)) + 
+  geom_bar(stat = "identity") + 
+  coord_flip() + 
+  ylab("Number of observations") + 
+  theme_bw()
 
 ```
 
@@ -226,7 +206,9 @@ Transform data.frame to spatial data.frame
 ```{r}
 #| eval: true
 # to sf object, specifying variables with coordinates and projection
-oaks_occ_sf <- st_as_sf(oaks_occ, coords = c("Longitude", "Latitude"), crs = 4326) %>%
+oaks_occ_sf <- st_as_sf(oaks_occ, # data.frame object
+                        coords = c("Longitude", "Latitude"), # coordinates names
+                        crs = 4326) %>% # coordinates system
   #group_by(species) %>%
   st_cast("MULTIPOINT") %>% 
   group_by(Species) %>% 
@@ -253,7 +235,6 @@ unique(oaks_occ$Species)
 
 ```
 
-
 What we did in the previous code was simply to transform a the data.frame object into a **spatial data.frame**. We can plot the results.
 
 ```{r}
@@ -276,6 +257,7 @@ ggplot() +
   )
 
 ```
+
 Nice!
 
 ## Range maps from point data
@@ -312,42 +294,7 @@ ggplot() +
 
 ```
 
-Now try the smoothed version.
-
-```{r}
-#| eval: true
-
-# Smoothed convex hulls
-oaks_SCH <- st_convex_hull(oaks_occ_sf) %>% 
-  smoothr::smooth()
-
-# plot smoothed hulls
-ggplot() +
-  geom_sf(data = neighbours, color = "white") +
-  geom_sf(data = NApoly) +
-  geom_sf(data = oaks_SCH, aes(fill = Species), alpha = 0.7) +
-  scale_fill_scico_d(palette = "davos", direction = -1, end = 0.9, guide = FALSE) +
-  coord_sf(
-    xlim = c(-125, -65),
-    ylim = c(10, 50)
-  ) +
-  theme(
-    plot.background = element_rect(fill = "#f1f2f3"),
-    panel.background = element_rect(fill = "lightblue"),
-    panel.grid = element_blank(),
-    line = element_blank(),
-    rect = element_blank()
-  )
-
-```
-
-*Please explain the results. How do you feel about that?*
-
-**Answer:**
-Out of the seven species, three have very large geographical ranges (*Q. virginiana*, *Q. oleoides*, and *Q. fusiformis*). The other four have small geographical ranges, of which *Q. brandegei* has the smallest range and is restricted to Baja California Sur, Mexico.
-
-
-Until here we have explored how to plot, clean and build species geographical ranges using occurrences. Now we will use species geographical ranges of the largest continental endemic radiation (**Furnariides**) to explore the geographical gradients of species diversity.
+Until here we have explored how to plot, clean and build species geographical ranges using occurrences. Now we will use a sample of species geographical ranges of the largest continental endemic radiation (**Furnariides**) to explore the geographical gradients of species diversity.
 
 # Diversity gradients
 
@@ -360,9 +307,10 @@ To load the Furnariides geographical ranges, we will use the function **st_read(
 ```{r}
 #| eval: true
 
-franges <- st_read("Data/Ranges/Furnarii_ranges_geo.shp") 
+franges <- st_read("data/furnariides_sample.shp") 
 
 ```
+
 Explore the imported data. 
 
 ```{r}
@@ -380,10 +328,11 @@ Now see all the data information.
 glimpse(franges)
 
 ```
+
 *What variables are present in the spatial polygon object?* and *How many species?*
 
 **Answer:**
-There are 652 species in this spatial object. The variables included are: Perimeter, Area, AreaKM2, RD, DR, BodyMass, DietInv, DietFruit, DietSeed, StratGroun, Understory, Midhigh, Canopy, Ages.
+There are 217 species in this spatial object. The variables included are: Perimeter, Area, AreaKM2, RD, DR, BodyMass, DietInv, DietFruit, DietSeed, StratGroun, Understory, Midhigh, Canopy, Ages.
 
 ```{r}
 
@@ -402,7 +351,7 @@ Let's plot a couple of species.
 #| eval: true
 
 selSPP <- franges %>% 
-  filter(SCINAME == "Furnarius rufus" | SCINAME == "Anabazenops dorsalis")
+  filter(SCINAME == "Batara cinerea" | SCINAME == "Asthenes modesta")
 
 # country subset
 SApoly <- worldMap %>% 
@@ -416,14 +365,15 @@ SApoly <- worldMap %>%
 
 # plot the selected ranges
 ggplot() +
-  geom_sf(data = SApoly) +
-  geom_sf(data = selSPP, aes(color = SCINAME), alpha = 0.7, size = 2) +
-  scale_fill_scico_d(palette = "davos", direction = -1, 
-                     end = 0.9, guide = FALSE) +
+  geom_sf(data = SApoly, alpha = 0.5) +
+  geom_sf(data = selSPP, aes(fill = SCINAME), alpha = 0.7, size = 2) +
+  scale_fill_scico_d(palette = "davos", direction = 1, 
+                     end = 0.9) +
   coord_sf(
     xlim = c(-80, -35),
     ylim = c(10, -60)
-  ) +
+  ) + 
+  theme_classic() + 
   theme(
     plot.background = element_rect(fill = "#f1f2f3"),
     panel.background = element_rect(fill = "lightblue"),
@@ -434,10 +384,10 @@ ggplot() +
 
 ```
 
-*Explain the distribution for both species (i.e., Furnarius rufus [blue polygon] and Anabazenops dorsalis [red polygon])* *Are these species distributed in sympatry or allopatry? Explain the selected distribution pattern.* 
+*Explain the distribution for both species (i.e., Asthenes modesta [blue polygon] and Batara cinerea [yellow polygon])* *Are these species distributed in sympatry or allopatry? Explain the selected distribution pattern.* 
 
 **Answer:**
-*F. rufus* is widely distributed mostly in the lowlands of South America (Bolivia, Brazil, Paraguay, Uruguay and Argentina). *A. dorsalis* is has a more restricted distribution mostly in the Andes (Bolivia, Perú, Ecuador and Colombia). Despite these two species belong to the same lineaje (Family Furnariidae) they present an allopatric distribution
+*A. modesta* is widely distributed mostly in the highlands of South America (Argentina, Bolivia, Chile and Perú). *B. cinerea* has a more restricted and disjunct distribution mostly in the lowlands of South America (Argentina, Bolivia, Brazil and Paraguay). These two species present an allopatric distribution
 
 ## Raster of species richness
 
@@ -488,7 +438,7 @@ f_sr_raster <- terra::rasterizeGeom(x = vect(franges), # species geographical ra
                          y = neo_ras, # empty raster
                          fun = "count" # count number of species per grid cell
                          )
-# this process can take a while depending on your computer (~45 secs in Jesús's computer), please be patient.
+# this process can take a while depending on your computer (~15 secs in Jesús's computer), please be patient.
 
 ```
 
@@ -546,7 +496,7 @@ p_furna_SR <- levelplot(mask(f_sr_raster, Apoly),
   par.settings = mapTheme,
   scales = list(x = list(draw = TRUE),
                 y = list(draw = TRUE)),
-  zlim = c(0, 180))
+  zlim = c(0, 180)) 
 
 p_furna_SR
 
@@ -557,131 +507,22 @@ p_furna_SR
 **Answer:**
 The map shows the classic latitudinal diversity gradient, with a higher accumulation of species close to the equator and a continued decline in the number of species as we approach the South Pole.
 
-## Scale dependency
-
-Now we will explore one of the oldest problems in ecology and evolution, the **scale dependency** in the data. So to explore this scale dependence, we will rasterize the Furnariides ranges, but using different spatial resolutions from 2º to 6º degrees of long-lat.
-
-Set the empty rasters.
+Save the figures 
 
 ```{r}
 #| eval: true
 
-# 2º degrees
-neo_ras_2dg <- rast()
-# Set the raster "extent" 
-ext(neo_ras_2dg) <- ext(franges)
-res(neo_ras_2dg) <- 2
-neo_ras_2dg
-values(neo_ras_2dg) <- 0
+pdf(file = "figures/Figure_1_SR.pdf", 
+    width = 8, height = 10)
 
-# 4º degrees
-neo_ras_4dg <- rast()
-# Set the raster "extent" 
-ext(neo_ras_4dg) <- ext(franges)
-res(neo_ras_4dg) <- 4
-neo_ras_4dg
-values(neo_ras_4dg) <- 0
+p_furna_SR
 
-# 8º degrees
-neo_ras_8dg <- rast()
-# Set the raster "extent" 
-ext(neo_ras_8dg) <- ext(franges)
-res(neo_ras_8dg) <- 8
-neo_ras_8dg
-values(neo_ras_8dg) <- 0
+dev.off()
 
 ```
 
-Now, rasterize the species richness to the desired pixel size.
 
-```{r}
-#| eval: true
-
-# Furnariides at 2º of long-lat
-f_sr_2dg_raster <- terra::rasterizeGeom(x = vect(franges), # species geographical ranges
-                         y = neo_ras_2dg, # empty raster
-                         fun = "count" # count number of species per grid cell
-                         )
-
-# Furnariides at 4º of long-lat
-f_sr_4dg_raster <- terra::rasterizeGeom(x = vect(franges), # species geographical ranges
-                         y = neo_ras_4dg, # empty raster
-                         fun = "count" # count number of species per grid cell
-                         )
-
-# Furnariides at 8º of long-lat
-f_sr_8dg_raster <- terra::rasterizeGeom(x = vect(franges), # species geographical ranges
-                         y = neo_ras_8dg, # empty raster
-                         fun = "count" # count number of species per grid cell
-                         )
-
-```
-
-Plot the four maps.
-
-```{r}
-#| eval: true
-
-par(mfrow = c (2, 2))
-
-## Map at 1 degree grid cell
-plot(mask(f_sr_raster, Apoly), # raster of species richness
-     col = viridis::turbo(10), # colors
-     zlim = c(min(values(f_sr_raster), 
-                  max(values(f_sr_raster)))), 
-     main = "Furnariides species richness 1 degree") 
-
-plot(Apoly_sp, add = TRUE) 
-
-## Map at 2 degrees grid cell
-plot(mask(f_sr_2dg_raster, Apoly), # raster of species richness
-     col = viridis::turbo(10), # colors
-     zlim = c(min(values(f_sr_raster), 
-                  max(values(f_sr_raster)))), 
-     main = "Furnariides species richness 2 degrees") 
-
-plot(Apoly_sp, add = TRUE) 
-
-## Map at 4 degrees grid cell
-plot(mask(f_sr_4dg_raster, Apoly), # raster of species richness
-     col = viridis::turbo(10), # colors
-     zlim = c(min(values(f_sr_raster), 
-                  max(values(f_sr_raster)))), 
-     main = "Furnariides species richness 4 degrees") 
-
-plot(Apoly_sp, add = TRUE) 
-
-## Map at 8 degrees grid cell
-plot(mask(f_sr_8dg_raster, Apoly), # raster of species richness
-     col = viridis::turbo(10), # colors
-     zlim = c(min(values(f_sr_raster), 
-                  max(values(f_sr_raster)))), 
-     main = "Furnariides species richness 8 degrees") 
-
-plot(Apoly_sp, add = TRUE) 
-
-#dev.off()
-
-```
-
-So, *is there an effect of spatial scale?* 
-
-**Answer:**
-Yes, with increasing the pixel size the pattern becomes diffuse and the detection of biogeographic patterns. 
-
-*Explain the differences between the four maps*
-
-**Answer:**
-Maps at 1 (~111 km) and 2 degrees are similar, showing a high concentration of species in the Amazon rainforest. With pixels of 4 and 8 degrees, regions that previously had low diversity now appear to contain a high number of species.
-
-*How do you feel about that?*
-
-**Answer:**
-The scale of analysis matters, and we should take care of it before making conclusions about the observed biodiversity patterns.
-
-## Correlative relationships
-
-### Species richness as a function of evolutionary history
+## Correlative relationships - species richness as a function of evolutionary history
 
 Let's try to rasterize another information from the polygon data set. We will use the information in the column **RD**, this data correspond to the numbers of nodes from the tips to the root of a phylogenetic tree or just **root distance**, thus, will use the RD to calculate the MRD metric **(mean root distance)** that measures the evolutionary derivedness of species within an assemblage [@kerr_relative_1999] and can be used to determine whether a local fauna is constituted primarily by early-diverged or by recently originated species [@hawkins_different_2012; @pinto-ledezma_geographical_2017]. In other words, high MRD values means that the community (i.e., grid-cell) is composed mostly by recently originated species, whereas low MRD values by early-diverged species.
 
@@ -798,11 +639,18 @@ data_sr_mrd <- left_join(data_sr, data_mrd, by = c("x", "y")) %>%
 data_sr_mrd %>% 
   ggplot(aes(x = MRD, y = SR)) + 
   geom_point(color = "darkgray", size = 3, alpha = 0.5) + 
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") + 
+  labs(x = "Mean Root Distance", 
+       y = "Species Richness") + 
+  theme_classic() + 
+  theme(
+    axis.text = element_text(size = 15, colour = "black"),
+    axis.title = element_text(size = 18) 
+    )
 
 ```
 
-Hmmm. What happened in here? Please answer the next questions.
+Hmmm. What happened in here? 
 
 *From the mean root distance map, it is possible to explain the Furnariides diversity gradient? If so, please explain from an evolutionary perspective*.
 
@@ -813,19 +661,22 @@ Species-rich areas present low MRD values, and species-poor areas present high M
 ## Save the figures
 There are multiple options to save the figures. Jesús particularly like saving his figures in **PDF**. To save the figures in a pdf file, you can use the following code.
 
-pdf("association_MRD_SR.pdf", height = 5, width = 7)
+pdf(file = "figures/Figure_2_association_MRD_SR.pdf", height = 5, width = 7)
 
 data_sr_mrd %>% 
   ggplot(aes(x = MRD, y = SR)) + 
   geom_point(color = "darkgray") + 
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") + 
+  labs(x = "Mean Root Distance", 
+       y = "Species Richness") + 
+  theme_classic()
   
 dev.off()
 
 This lines will save your figure in your working directory.
 :::
 
-### Species richness as a function of environment
+### Precipitation and Temperature
 
 Load the environmental variables that correspond to bio1 (**Annual Mean Temperature**) and bio12 (**Annual Precipitation**). These data correspond to two variables out of 19 from WorldClim (http://www.worldclim.org/current). We will use these two variables just for educational purposes, rather to make a complete evaluation of the species-environmental relationships.
 
@@ -833,11 +684,11 @@ Load the environmental variables that correspond to bio1 (**Annual Mean Temperat
 #| eval: true
 
 # Annual Mean Temperature
-bio1 <- rast("Data/BioClim/bio1.bil")
+bio1 <- rast("data/bio1.bil")
 bio1 <- bio1/10
 
 # Annual Precipitation
-bio12 <- rast("Data/BioClim/bio12.bil")
+bio12 <- rast("data/bio12.bil")
 bio12
 
 ```
@@ -948,428 +799,98 @@ The positive association between MAP and MAT with the number of species suggests
 fdata %>% 
   ggplot(aes(x = MAT, y = SR)) + 
   geom_point(color = "darkgray") + 
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") + 
+  labs(x = "Mean Annual Temperature", 
+       y = "Species Richness") + 
+  theme_classic() + 
+  theme(
+    axis.text = element_text(size = 15, colour = "black"),
+    axis.title = element_text(size = 18) 
+    )
 
 fdata %>% 
   ggplot(aes(x = MAP, y = SR)) + 
   geom_point(color = "darkgray") + 
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") + 
+  labs(x = "Annual Precipitation", 
+       y = "Species Richness") + 
+  theme_classic() + 
+  theme(
+    axis.text = element_text(size = 15, colour = "black"),
+    axis.title = element_text(size = 18) 
+    )
 
 ```
+### Precipitation and Temperature for Minnesota
+US states information was obtained from [here](https://hub.arcgis.com/datasets/1b02c87f62d24508970dc1a6df80c98e/explore)
 
-## Considering spatial autocorrelation
-
-This paragraph was extracted entirely from [@f_dormann_methods_2007]:
-The analysis of spatial data is complicated by a phenomenon known as spatial autocorrelation. Spatial autocorrelation **(SAC)** occurs when the values of variables sampled at nearby locations are not independent from each other [@tobler_computer_1970]. The causes of spatial autocorrelation are manifold, but three factors are particularly common: 1) biological processes such as speciation, extinction, dispersal or species interactions are distance‐related; 2) non‐linear relationships between environment and species are modelled erroneously as linear; 3) the statistical model fails to account for an important environmental determinant that in itself is spatially structured and thus causes spatial structuring in the response [@besag_spatial_1974]. Since they also lead to autocorrelated residuals, these are equally problematic. A fourth source of spatial autocorrelation relates to spatial resolution, because coarser grains lead to a spatial smoothing of data. In all of these cases, SAC may confound the analysis of species distribution data.
-
-We know that a correlation is not a causation, so, to explore the relationship we need to build a model or fit a model. To explore this relationships we will first explore a simple Ordinary Least Square regression or OLS.
+Read spatial information 
 
 ```{r}
 #| eval: true
 
-fols <- lm(SR ~ MAT + MAP, data = fdata)
+US_states <- st_read("data/States_shapefile-shp/States_shapefile.shp") 
 
-summary(fols)
+glimpse(US_states)
 
 ```
-
-Let's complicate our model a little bit... Now let's include the MRD values as covariable (Aka predictor).
+Filter the state of Minnesota
 
 ```{r}
 #| eval: true
 
-fols2 <- lm(SR ~ MAT + MAP + MRD, data = fdata) 
-
-summary(fols2)
+MN <- US_states %>% 
+  filter(State_Name == "MINNESOTA")
 
 ```
 
-*What is telling us these two OLS models?* 
-
-**Answer:**
-The first model, which includes MAT and MAP as predictors, suggests that species richness will increase as a function of increasing precipitation and temperature. This model explains 45% of the variation in species richness. It is important to highlight that despite the slopes being different from zero, the intercept does not, so this output should be considered exploratory.
-
-The second model includes MRD as an additional covariable. By including MRD, the variation explained went up to 50%. So, including an evolutionary-informed covariable allowed us to explain better the variation in the number of species that co-occur in the Neotropics.
-
-Now, explore the spatial autocorrelation of the Furnariides richness gradient. Spatial autocorrelation (it can also be temporal or phylogenetic) is a measure of similarity (**correlation**) between nearby observations. In other words, the spatial autocorrelation describe the degree two which observations (values) at spatial locations (whether they are points, areas, or raster cells), are similar to each other. 
+Plot the United States and highlight Minnesota
 
 ```{r}
 #| eval: true
 
-autocor_SR <- ncf::correlog(fdata$x, # longitude
-                            fdata$y, # latitude
-                            z = fdata$SR, # species richness
-                            na.rm = TRUE, 
-                            increment = 1, 
-                            resamp = 1)
+ggplot() +
+  geom_sf(data = US_states, alpha = 0.5) +
+  geom_sf(data = MN, aes(fill = State_Name), alpha = 0.7, size = 2) +
+  scale_fill_scico_d(palette = "davos", direction = 1, 
+                     end = 0.9) +
+  theme_classic() + 
+  theme(
+    plot.background = element_rect(fill = "#f1f2f3"),
+    panel.background = element_rect(fill = "lightblue"),
+    panel.grid = element_blank(),
+    line = element_blank(),
+    rect = element_blank()
+  )
 
 ```
 
-Let's use a correlogram to explore the spatial autocorrelation. Remember, spatial autocorrelation (it can also be temporal or phylogenetic) is a measure of similarity (**correlation**) between nearby observations. Thus, high values means high spatial autocorrelation.
+Get precipitation and temperature for the state of Minnesota
 
 ```{r}
 #| eval: true
 
-plot(autocor_SR$correlation[1:50], 
-     type = "b", pch = 1, cex = 1.2, lwd = 1.5, ylim = c(-1, 1), 
-     xlab = "Distance class", 
-     ylab = "Moran's I", 
-     cex.lab = 1.2, 
-     cex.axis = 1.2)
+MN_mat <- crop(bio1, MN)
 
-abline(h = 0)
+MN_ap <- crop(bio12, MN)
 
 ```
 
-*Is there a spatial autocorrelation in the data? Please explain your answer* 
-
-**Answer:**
-Yes, we can see that close pixels are more similar in terms of the number of species than pixels that are farther apart. Notably, around the distance class 20, the positive spatial autocorrelation disappears. 
-
-What about the residuals? Let's explore the spatial autocorrelation in the residuals.
+Plot Minnesota temperature and precipitation
 
 ```{r}
 #| eval: true
 
-coords <- fdata[1:2] 
+par(mfrow = c(1, 2))
 
-coords <- as.matrix(coords) 
+plot(MN_mat, main = "Annual Mean Temperature", 
+     col = rev(viridis::inferno(10)))
+plot(as(MN, "Spatial"), add = TRUE, lwd = 2, border = "green")
 
-head(coords)
-
-```
-
-Build a neighborhood contiguity by distance. The distance used in this example is **1.5 degrees** but you can try with a large distance if you wish to explore more models. 
-
-```{r}
-#| eval: true
-
-# neighborhood contiguity by distance
-nb1.5 <- spdep::dnearneigh(coords, 0, 1.5) 
+plot(MN_ap, main = "Annual Precipitation", 
+     col = rev(viridis::inferno(10)))
+plot(as(MN, "Spatial"), add = TRUE, lwd = 2, border = "green")
 
 ```
-
-Using the neighborhood contiguity build spatial weights for neighbor lists.
-
-```{r}
-#| eval: true
-
-nb1.5.w <- spdep::nb2listw(neighbours = nb1.5, 
-                           glist = NULL, 
-                           style = "W", 
-                           zero.policy = TRUE)
-
-```
-
-Extract the residuals from the OLS model
-
-```{r}
-#| eval: true
-
-residuals_ols <- residuals(fols2) 
-
-plot(residuals_ols)
-
-```
-
-Calculate a univariate spatial correlogram.
-
-```{r}
-#| eval: true
-
-autocor_ols_res <- ncf::correlog(x = fdata$x, 
-                            y = fdata$y, 
-                            z = residuals(fols), 
-                            increment = 1, 
-                            resamp = 1)
-
-```
-
-Plot the autocorrelagram for the residuals
-
-```{r}
-#| eval: true
-
-plot(autocor_ols_res$correlation[1:50], 
-     type = "b", pch = 1, cex = 1.2, lwd = 1.5, ylim = c(-0.5, 1), 
-     xlab = "distance", 
-     ylab = "Moran's I", 
-     cex.lab = 1.5, 
-     cex.axis = 1.2) 
-
-abline(h = 0)
-
-title(main = "OLS residuals", cex = 1.5)
-
-```
-
-*How many distance classes are necessary to eliminate the spatial autocorrelation in the residuals*
-
-**Answer:**
-As in the case of species richness, the residuals also present high spatial autocorrelation at short distances, confirming that additional factors or processes are influencing the patterns we observe in nature. In other words, MAP, MAT, and MRD are insufficient to explain the variation in species richness.
-
-Ohhh, seems that the residuals have a strong spatial autocorrelation, that is a problem because if we found autocorrelation in the residuals much of the explanation that we obtain can be biased. See explanation above.
-
-Let's inspect the two autocorrelograms.
-
-```{r}
-#| eval: true
-
-par(mfrow = c(2, 1))
-
-# Plot SR
-plot(autocor_SR$correlation[1:50], 
-     type = "b", pch = 1, cex = 1.2, 
-     lwd = 1.5, ylim = c(-1, 1), 
-     xlab = "Distance class", 
-     ylab = "Moran's I", 
-     cex.lab = 1.2, 
-     cex.axis = 1.2)
-abline(h = 0)
-title(main = "OLS model", cex = 1.5)
-
-# Plot residuals SR
-plot(autocor_ols_res$correlation[1:50], 
-     type = "b", pch = 1, cex = 1.2, 
-     lwd = 1.5, ylim = c(-0.5, 1), 
-     xlab = "Distance class", 
-     ylab = "Moran's I", 
-     cex.lab = 1.5, 
-     cex.axis = 1.2)
-abline(h = 0)
-title(main = "OLS residuals", cex = 1.5)
-
-```
-
-Hmmm, seems that there is a strong spatial autocorrelation, thus any conclusion using the OLS model can be biased.
-
-*How do you feel about that?*
-
-**Answer:**
-Although simple linear models (OLS) can help us detect patterns to make inferences, we need to go at least one step ahead and explore the spatial structure of the data to better understand the factors and processes that generate the observed data.
-
-To try to solve this important issue, we will use **spatial simultaneous autoregressive error model estimation (Aka SAR model)**, this kind of models account for spatial autocorrelation by adding an extra term (**autoregressive**) in the form of a spatial-weight matrix that specifies the neighborhood of each cell or pixel and the relative weight of each neighbor.
-
-Let's fit the SAR model.
-
-```{r}
-#| eval: true
-
-sar_nb1.5.w <- spatialreg::errorsarlm(fols2, 
-                                      listw = nb1.5.w, 
-                                      data = fdata,
-                                      quiet = FALSE, 
-                                      zero.policy = TRUE, 
-                                      na.action = na.exclude)
-# this will take a while, ~10 seconds in Jesús's computer
-
-```
-
-```{r}
-#| eval: true
-
-summary(sar_nb1.5.w)
-
-```
-
-Extract the residuals from SAR model 
-
-```{r}
-#| eval: true
-
-residuals_sar_nb1.5.w <- residuals(sar_nb1.5.w) 
-
-```
-
-Now estimate the spatial autocorrelation of the SAR model.
-
-```{r}
-#| eval: true
-
-autocor_sar_nb1.5.w <- ncf::correlog(x = fdata$x, 
-                                     y = fdata$y, 
-                                     z = residuals(sar_nb1.5.w), 
-                                     na.rm = TRUE, 
-                                     increment = 1, 
-                                     resamp = 1)
-
-```
-
-Plot the autocorrelogram under the SAR model.
-
-```{r}
-#| eval: true
-
-plot(autocor_sar_nb1.5.w$correlation[1:50], 
-     type = "b", pch = 4, cex = 1.2, 
-     lwd = 1.5, ylim = c(-0.5, 1), 
-     xlab = "distance", 
-     ylab = "Moran's I", 
-     cex.lab = 1.5, 
-     cex.axis = 1.2)
-
-abline(h = 0) 
-
-title(main = "SARerr residuals", cex = 1.5)
-
-```
-
-Ohhh, where is the autocorrelation in the residuals? Now compare the two autocorrelograms.
-
-```{r}
-#| eval: true
-
-par(mfrow = c(2, 1))
-
-plot(autocor_ols_res$correlation[1:50], 
-     type = "b", pch = 1, cex = 1.2, 
-     lwd = 1.5, ylim = c(-0.5, 1), 
-     xlab = "distance", 
-     ylab = "Moran's I", cex.lab = 1.5, 
-     cex.axis = 1.2)
-abline(h = 0)
-title(main = "OLS residuals", cex = 1.5)
-
-plot(autocor_sar_nb1.5.w$correlation[1:50], 
-     type = "b", pch = 4, cex = 1.2, 
-     lwd = 1.5, ylim = c(-0.5, 1), 
-     xlab = "distance", 
-     ylab = "Moran's I", 
-     cex.lab = 1.5, 
-     cex.axis = 1.2)
-abline(h = 0)
-title(main = "SARerr residuals", cex = 1.5)
-
-```
-
-Ok, now we know that the SAR model can solve the problem in the spatial autocorrelation in the residuals, let's try to make some inferences.
-
-```{r}
-#| eval: true
-
-summary(sar_nb1.5.w)
-
-```
-
-```{r}
-#| eval: true
-
-summary(fols2)
-
-```
-
-*By looking to the summary of the SAR and OLS models, explain the differences in the coefficients between both models.*
-
-**Answer:**
-The first difference is that the coefficients (intercepts and slopes) changed in strength and direction. More specifically, the covariable MAT that was positive now for the OLS model, under the SAR model is negative.  The effect of MAP and MRD also decreased.
-
-Let's compare the slopes for both models in a similar way we did when we compared OLS versus PGLS. Let's start with mean annual temperature.
-
-```{r}
-#| eval: true
-
-fdata %>% 
-  ggplot(aes(x = MAT, y = SR)) + 
-  geom_point(alpha = 0.5, color = "darkgray") + 
-  labs(x = "Mean annual temperature", 
-       y = "Species richness") + 
-  geom_smooth(method = "lm", # coefficient OLS
-              se = FALSE, 
-              color = "blue", 
-              linewidth = 2) + 
-  geom_abline(intercept = coef(sar_nb1.5.w)[2], # coefficients SAR
-              slope = coef(sar_nb1.5.w)[3], 
-              color = "red", 
-              linewidth = 2)
-
-```
-
-What about precipitation.
-
-```{r}
-#| eval: true
-
-fdata %>% 
-  ggplot(aes(x = MAP, y = SR)) + 
-  geom_point(alpha = 0.5, color = "darkgray") + 
-  labs(x = "Annual precipitation", 
-       y = "Species richness") + 
-  geom_smooth(method = "lm", # coefficient OLS
-              se = FALSE, 
-              color = "blue", 
-              linewidth = 2) + 
-  geom_abline(intercept = coef(sar_nb1.5.w)[2], # coefficients SAR
-              slope = coef(sar_nb1.5.w)[4], 
-              color = "red", 
-              linewidth = 2)
-
-```
-
-And finally mean root distance
-
-```{r}
-#| eval: true
-
-fdata %>% 
-  ggplot(aes(x = MRD, y = SR)) + 
-  geom_point(alpha = 0.5, color = "darkgray") + 
-  labs(x = "Mean root distance", 
-       y = "Species richness") + 
-  geom_smooth(method = "lm", # coefficient OLS
-              se = FALSE, 
-              color = "blue", 
-              linewidth = 2) + 
-  geom_abline(intercept = coef(sar_nb1.5.w)[2], # coefficients SAR
-              slope = coef(sar_nb1.5.w)[5], 
-              color = "red", 
-              linewidth = 2)
-
-```
-
-By inspecting the figures, we can see that sometimes, our conclusions about the factors influencing the patterns of biodiversity can change depending on how the data is analyzed.
-
-The last exercise of this tutorial is to compare the prediction of both models. To calculate a R2 to the SAR model, we will use the function **SARr2()** from Jesús's GitHub.
-
-```{r}
-#| eval: true
-
-source("https://raw.githubusercontent.com/jesusNPL/BetaDivNA/master/SARr2.R")
-
-```
-
-Calculate SAR R2
-
-```{r}
-#| eval: true
-
-SARr2(Lfull = sar_nb1.5.w$LL[[1]], # log likelihood of the model that includes the spatial weights
-      Lnull = sar_nb1.5.w$logLik_lm.model[[1]], # log likelihood null model
-      N = nrow(fdata) # number of observation
-      ) 
-
-```
-
-Comparing the two models (OLS and SAR), please answer the following questions:
-
-*1. Which model have the best explanation?*
-
-**Answer:**
-The SAR model that includes the spatial structure of the data explain 84% of the variation in species richness. In contrast the OLS model only 50%.
-
-*2. What can we conclude from these results?*
-
-**Answer:**
-Although the covariables used in both models (SAR and OLS) help us to explain the variation in species richness, we can confirm that additional factors masked in the spatial structure of the data explain a high amount of variation. 
-
-*3. Do the slopes (betas) change from the OLS to the SAR? What about the R2?* 
-
-**Answer:**
-Yes, the coefficients and the R\^2 changed drastically by taking into account the spatial structure of the data.
-
-
-*4. How do you feel about that?*
-
-**Answer:**
-Although simple models are useful for data exploration, if our ultimate goal is to make inferences about the processes that generate the data, then models that account for the structure of the data are necessary. 
 
 The end! for now...
