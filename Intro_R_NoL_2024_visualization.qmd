@@ -785,7 +785,7 @@ summary(lmbio12)
 *Which environmental variable is more related with Furnariides richness?*
 
 **Answer:**
-Both MAT and MAP are positively associated with the number of species. However, MAP shows a more steeper association than MAT. Also, MAP (R\^2 = 0.43) explain more variance than MAT (R\^2 = 0.24). 
+Both MAT and MAP are positively associated with the number of species. However, MAP shows a more steeper association than MAT. Also, MAP (R\^2 = 0.35) explain more variance than MAT (R\^2 = 0.17). 
 
 
 *Please explain the relationship from an ecological perspective*
